@@ -7,7 +7,7 @@
     "mixins": [
     ],
     "client": [
-        "MixinTitleScreen"
+      "tfar.rpgui.mixin.MixinTitleScreen"
     ],
     "server": [
     ],
