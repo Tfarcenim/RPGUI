@@ -171,7 +171,7 @@ public class RPGUIForge {
 
     void disableOthers(RenderGuiLayerEvent.Pre event) {
         ResourceLocation overlay = event.getName();
-        if (overlay == VanillaGuiLayers.PLAYER_HEALTH ||overlay == VanillaGuiLayers.HOTBAR || overlay == VanillaGuiLayers.EXPERIENCE_BAR) {
+        if (overlay.equals(VanillaGuiLayers.PLAYER_HEALTH) || overlay.equals(VanillaGuiLayers.HOTBAR) || overlay.equals(VanillaGuiLayers.EXPERIENCE_BAR) || overlay.equals(VanillaGuiLayers.EXPERIENCE_LEVEL)) {
             event.setCanceled(true);
         }
     }
