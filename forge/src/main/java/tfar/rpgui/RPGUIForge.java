@@ -31,10 +31,17 @@ public class RPGUIForge {
     static ForgeConfigSpec.IntValue height;
     static ForgeConfigSpec.IntValue width;
 
+    static ForgeConfigSpec.IntValue xp_xPos;
+    static ForgeConfigSpec.IntValue xp_yPos;
+
     public RPGUIForge() {
             final Pair<RPGUIForge, ForgeConfigSpec> specPair = new ForgeConfigSpec.Builder().configure(builder -> {
                 width = builder.defineInRange("xPos",() ->-182,-1000000,1000000);
                 height = builder.defineInRange("yPos",() ->-80,-1000000,1000000);
+
+                xp_xPos = builder.defineInRange("xp_xPos",() ->-182+55,-1000000,1000000);
+                xp_yPos = builder.defineInRange("xp_yPos",() ->-80,-1000000,1000000);
+
                 return this;
             });
             CLIENT_SPEC = specPair.getRight();
@@ -73,8 +80,8 @@ public class RPGUIForge {
                 Font font = minecraft.font;
                 minecraft.getProfiler().push("expLevel");
                 String s = "" + minecraft.player.totalExperience;
-                int xPos = screenWidth / 2 + width.get() + 55;
-                int yPos = screenHeight + height.get();
+                int xPos = screenWidth / 2 + xp_xPos.get();
+                int yPos = screenHeight + xp_yPos.get();
 
                 guiGraphics.drawString(font, s, xPos + 1, yPos, 0, false);
                 guiGraphics.drawString(font, s, xPos - 1, yPos, 0, false);
