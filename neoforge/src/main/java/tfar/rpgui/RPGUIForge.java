@@ -1,5 +1,6 @@
 package tfar.rpgui;
 
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -8,34 +9,31 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.NamedGuiOverlay;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.NeoForge;
 import org.apache.commons.lang3.tuple.Pair;
 
 @Mod(RPGUI.MOD_ID)
 public class RPGUIForge {
 
     public static RPGUIForge CONFIG;
-    public static ForgeConfigSpec CLIENT_SPEC;
+    public static ModConfigSpec CLIENT_SPEC;
 
-    static ForgeConfigSpec.IntValue height;
-    static ForgeConfigSpec.IntValue width;
+    static ModConfigSpec.IntValue height;
+    static ModConfigSpec.IntValue width;
 
-    static ForgeConfigSpec.IntValue xp_xPos;
-    static ForgeConfigSpec.IntValue xp_yPos;
+    static ModConfigSpec.IntValue xp_xPos;
+    static ModConfigSpec.IntValue xp_yPos;
 
-    public RPGUIForge() {
-            final Pair<RPGUIForge, ForgeConfigSpec> specPair = new ForgeConfigSpec.Builder().configure(builder -> {
+    public RPGUIForge(IEventBus bus,ModContainer container) {
+            final Pair<RPGUIForge, ModConfigSpec> specPair = new ModConfigSpec.Builder().configure(builder -> {
                 width = builder.defineInRange("xPos",() ->-182,-1000000,1000000);
                 height = builder.defineInRange("yPos",() ->-80,-1000000,1000000);
 
@@ -47,22 +45,20 @@ public class RPGUIForge {
             CLIENT_SPEC = specPair.getRight();
             CONFIG = specPair.getLeft();
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, CLIENT_SPEC);
-
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
+        container.registerConfig(ModConfig.Type.CLIENT, CLIENT_SPEC);
         // This method is invoked by the Forge mod loader when it is ready
         // to load your mod. You can access Forge and Common code in this
         // project.
         bus.addListener(this::registerOverlay);
-        MinecraftForge.EVENT_BUS.addListener(this::disableOthers);
+        NeoForge.EVENT_BUS.addListener(this::disableOthers);
         // Use Forge to bootstrap the Common mod.
         RPGUI.init();
     }
 
 
-    void registerOverlay(RegisterGuiOverlaysEvent event) {
-        event.registerAbove(VanillaGuiOverlay.PLAYER_HEALTH.id(),"overlay",RPGUIForge::renderOverlay);
-        event.registerAbove(VanillaGuiOverlay.EXPERIENCE_BAR.id(),"xp_overlay",RPGUIForge::renderXPOverlay);
+    void registerOverlay(RegisterGuiLayersEvent event) {
+        event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH,RPGUI.id("overlay"),RPGUIForge::renderOverlay);
+        event.registerAbove(VanillaGuiLayers.EXPERIENCE_BAR,RPGUI.id("xp_overlay"),RPGUIForge::renderXPOverlay);
     }
 
     static int background_width = 75;
@@ -70,18 +66,17 @@ public class RPGUIForge {
     static int diamond_height = 30;
     static int health_offset = background_width + diamond_height;
 
-    static final ResourceLocation overlay = new ResourceLocation(RPGUI.MOD_ID,"textures/gui/layout.png");
+    static final ResourceLocation overlay = ResourceLocation.fromNamespaceAndPath(RPGUI.MOD_ID,"textures/gui/layout.png");
 
-    static void renderXPOverlay(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        if (gui.getMinecraft().player.jumpableVehicle() == null && !gui.getMinecraft().options.hideGui) {
-            gui.setupOverlayRenderState(true, false);
-            if (gui.getMinecraft().gameMode.hasExperience()) {
+    static void renderXPOverlay(GuiGraphics guiGraphics, DeltaTracker partialTick) {
+        if (Minecraft.getInstance().player.jumpableVehicle() == null && !Minecraft.getInstance().options.hideGui) {
+            if (Minecraft.getInstance().gameMode.hasExperience()) {
                 Minecraft minecraft = Minecraft.getInstance();
                 Font font = minecraft.font;
                 minecraft.getProfiler().push("expLevel");
                 String s = "" + minecraft.player.totalExperience;
-                int xPos = screenWidth / 2 + xp_xPos.get();
-                int yPos = screenHeight + xp_yPos.get();
+                int xPos = guiGraphics.guiWidth() / 2 + xp_xPos.get();
+                int yPos = guiGraphics.guiHeight() + xp_yPos.get();
 
                 guiGraphics.drawString(font, s, xPos + 1, yPos, 0, false);
                 guiGraphics.drawString(font, s, xPos - 1, yPos, 0, false);
@@ -94,17 +89,16 @@ public class RPGUIForge {
     }
 
 
-    static void renderOverlay(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        if (!gui.getMinecraft().options.hideGui) {
-            gui.setupOverlayRenderState(true, false);
-            if (gui.getMinecraft().gameMode.getPlayerMode() == GameType.SPECTATOR) {
-                gui.getSpectatorGui().renderHotbar(guiGraphics);
+    static void renderOverlay(GuiGraphics guiGraphics, DeltaTracker partialTick) {
+        if (!Minecraft.getInstance().options.hideGui) {
+            if (Minecraft.getInstance().gameMode.getPlayerMode() == GameType.SPECTATOR) {
+                Minecraft.getInstance().gui.getSpectatorGui().renderHotbar(guiGraphics);
             } else {
                 Entity entity = Minecraft.getInstance().cameraEntity;
                 if (entity instanceof Player player) {
 
-                    int xPos = screenWidth / 2 + width.get();
-                    int yPos = screenHeight + height.get();
+                    int xPos = guiGraphics.guiWidth() / 2 + width.get();
+                    int yPos = guiGraphics.guiHeight() + height.get();
                     guiGraphics.blit(overlay, xPos, yPos, 0, 0, background_width, background_height);
 
                     double healthFill = player.getHealth() / player.getMaxHealth();
@@ -155,9 +149,9 @@ public class RPGUIForge {
      * @param stack       the item stack to render in the slot.
      * @param seed        the seed value used for random rendering variations.
      */
-    private static void renderSlot(GuiGraphics guiGraphics, int x, int y, float partialTick, Player player, ItemStack stack, int seed) {
+    private static void renderSlot(GuiGraphics guiGraphics, int x, int y, DeltaTracker partialTick, Player player, ItemStack stack, int seed) {
         if (!stack.isEmpty()) {
-            float f = (float)stack.getPopTime() - partialTick;
+            float f = (float)stack.getPopTime() - partialTick.getGameTimeDeltaPartialTick(false);
             if (f > 0.0F) {
                 float f1 = 1.0F + f / 5.0F;
                 guiGraphics.pose().pushPose();
@@ -175,9 +169,9 @@ public class RPGUIForge {
         }
     }
 
-    void disableOthers(RenderGuiOverlayEvent.Pre event) {
-        NamedGuiOverlay overlay = event.getOverlay();
-        if (overlay == VanillaGuiOverlay.PLAYER_HEALTH.type() ||overlay == VanillaGuiOverlay.HOTBAR.type() || overlay == VanillaGuiOverlay.EXPERIENCE_BAR.type()) {
+    void disableOthers(RenderGuiLayerEvent.Pre event) {
+        ResourceLocation overlay = event.getName();
+        if (overlay == VanillaGuiLayers.PLAYER_HEALTH ||overlay == VanillaGuiLayers.HOTBAR || overlay == VanillaGuiLayers.EXPERIENCE_BAR) {
             event.setCanceled(true);
         }
     }
